@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+    </head>
+    <body>
+        <div id="map"></div>
+        <div id="scatterpricerent"></div>
+    </body>
+
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/topojson.v2.min.js"></script>
+    <style>
+        .boroughs {
+            fill: rgb(222,235,247);
+            stroke: #000;
+            stroke-width: 0.5px;
+        }
+        .tooltip {
+            position: absolute;
+            font-size: 12px;
+            width:  auto;
+            height: auto;
+            pointer-events: none;
+            background-color: white;
+        }
+        .circle-hover {
+            stroke: #000;
+            stroke-width: 1px;
+        }
+
+        circle {
+        fill-opacity: .7;
+        }
+
+        circle.hidden {
+        fill: #ccc !important;
+        }
+
+        #map {    
+            position:absolute;
+            top:10px;
+            left:10px;
+            width:600px;
+            height: 600px; 
+        }
+
+        #scatterpricerent {    
+            position:absolute;
+            top:10px;
+            left:650px;
+            height: 400px;
+            width:600px;
+        }
+
+    </style>
+    <script>
+
+        var w = 600,
+            h = 600;
+        var margin = 20;
+        var innerw = w - margin;
+        var innerh = h - margin;
+        var outergraph_translate_x = 60;
+        var outergraph_translate_y = 30;
+        var xScale;
+        var yScale;
+        var myColor;
+        
+        svg = d3.select("#map").append("svg").attr("width", w).attr("height", h).append("g")
+                    .attr("id","outergraph")
+                    .attr("transform", "translate(" + outergraph_translate_x + "," + outergraph_translate_y + ")");
+        
+        // var svg = d3.select("#map-container").append("svg")
+        //     .attr("width", width)
+        //     .attr("height", height);
+        
+
+        var brush = d3.brush()
+            .on("start", brushstart)
+            .on("brush", brushmove)
+            .on("end", brushend);
+
+        var brush2 = d3.brush()
+            .on("start", brushstart2)
+            .on("brush", brushmove2)
+            .on("end", brushend2);
+
+        var brushCell;
+        var brushCell2;
+        var inside_brush;
+
+        function checkConditions(e,d,type){
+            
+            if(type==="map"){                    
+                var map_check = true;
+                var cx = projection([+d.longitude, +d.latitude])[0];
+                            cy = projection([+d.longitude, +d.latitude])[1];
+                if( !(e[0][0] > cx || cx > e[1][0]
+                    || e[0][1] > cy || cy > e[1][1])){
+                        inside_brush.push(+d.index);
+                        map_check = false;
+                    }
+                    return map_check;
+                
+            }
+            else {
+            var scatter_price_zri_check = true;
+            var cx = xScale(d[0]);
+                               cy =  yScale(d[1]);
+                if( !(e[0][0] > cx || cx > e[1][0]
+                    || e[0][1] > cy || cy > e[1][1])){
+                        // console.log(d);
+                        inside_brush.push(+d[2]);
+                        scatter_price_zri_check = false;
+                    }
+                return scatter_price_zri_check;
+            
+        }
+         return true;   
+        }
+
+        // Clear the previously-active brush, if any.
+        function brushstart(p) {
+            console.log("inside brush start");
+            inside_brush = [];
+        if (brushCell !== this) {
+            d3.select(brushCell).call(brush.move, null);
+            brushCell = this;
+            }
+        }
+
+        function brushstart2(p) {
+            console.log("inside brush start");
+            inside_brush = [];
+        if (brushCell2 !== this) {
+            d3.select(brushCell2).call(brush2.move, null);
+            brushCell2 = this;
+            }
+        }
+        
+        // Highlight the selected circles.
+        function brushmove(p) {
+            
+        var e = d3.brushSelection(this);
+        d3.select("body").selectAll("#mapscatter").classed("hidden", function(d) {
+            // to return default true, checkConditions should return false
+            var to_return = checkConditions(e,d,"map");
+            return !e? false: to_return;
+        });
+        var set_inside_brush = new Set(inside_brush)
+        
+        d3.select("body").selectAll("#pricescatter").classed("hidden", function(d) {
+            // to return default true, checkConditions should return false
+            
+            if(set_inside_brush.has(+d[2])){
+            return false;
+            }
+            else{
+                return true;
+            }
+        });
+
+        }
+
+        function brushmove2(p) {
+            
+            var e = d3.brushSelection(this);
+            
+            d3.select("body").selectAll("#pricescatter").classed("hidden", function(d) {
+                var to_return = checkConditions(e,d,"scatterprice");
+                // var cx = xScale(d[0]);
+                return !e? false: to_return;
+            });
+            var set_inside_brush = new Set(inside_brush);
+            // console.log(inside_brush);
+            // now we can use stuff inside_brush to refresh other 4 charts
+            // linked brushing achieved :)
+            d3.select("body").selectAll("#mapscatter").classed("hidden", function(d) {
+                if(set_inside_brush.has(+d.index)){
+                    return false;
+                    }
+                    else{
+                        return true;
+                    }
+            });
+            }
+
+        // If the brush is empty, select all circles.
+        function brushend() {
+            console.log("inside brush end");
+        var e = d3.brushSelection(this);
+        if (e === null) d3.select("body").selectAll(".hidden").classed("hidden", false);
+        }
+
+        function brushend2() {
+            console.log("inside brush end");
+        var e = d3.brushSelection(this);
+        if (e === null) d3.select("body").selectAll(".hidden").classed("hidden", false);
+        }
+
+        var projection = d3.geoMercator() // mercator makes it easy to center on specific lat/long
+            .scale(50000)
+            .center([-73.730461,40.732183]); // long, lat of NYC
+
+        var pathGenerator = d3.geoPath()
+            .projection(projection);
+
+        d3.json("nyc.geo.json", function(error, boroughs) {
+            if (error) return console.error(error);
+            //console.log(boroughs);
+
+
+            svg.selectAll("path")
+                .data(boroughs.features)
+              .enter().append("path")
+                .attr("class", "boroughs")
+                .attr("d", pathGenerator);
+
+            // With map made, load data and add it to the map
+            d3.csv('stratified_sampled_data.csv', function(error2, airbnbdata) {
+                if (error2) return console.error(error2);
+                var neighbourhood_groups = airbnbdata.map(function(d) { return d.neighbourhood_group; })
+                var neighbourhoods = Array.from(new Set(neighbourhood_groups));
+                myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
+                addPointsToMap(airbnbdata);
+                drawScatterPlot(airbnbdata);
+            });
+
+        });
+
+        var addPointsToMap = function(airbnbdata) {
+            var radiusScale = d3.scaleSqrt()
+                // .domain([d3.extent(crimeData, function(crime) { return +crime.TOT; })])
+                .domain([1,5])
+                .range([2, 15]);
+
+            
+            all_circles = svg.selectAll("circle")
+                .data(airbnbdata)
+              .enter().append("circle")
+                .attr("fill", function(d) { return myColor(d.neighbourhood_group) })
+                .attr("cx", function(d) { return projection([+d.longitude, +d.latitude])[0]; })
+                .attr("cy", function(d) { return projection([+d.longitude, +d.latitude])[1]; })
+                .attr("id","mapscatter")
+                .attr("r",  function(d) { return "2" });
+
+            svg.append("g")
+                .call(brush);
+        };
+        
+        var drawScatterPlot = function(dataset){
+        var x_label="price",y_label="zri";
+
+       
+        var w = 400,
+            h = 300;
+        var margin = 50;
+        var innerw = w - margin;
+        var innerh = h - margin;
+        var outergraph_translate_x = 40;
+        var outergraph_translate_y = 2;
+
+        final_ds = dataset.map(function(d) { return [+d.price,+d.ZRI,+d.index,d.neighbourhood_group]; })
+
+        // x_lim = d3.max(dataset, d=>+d.price)
+        console.log(final_ds);
+
+        var buffer = 10;
+        // final_ds = dataset.original.circle.concat(dataset.stratified.circle,dataset.random.circle)
+        x_lim = d3.extent(final_ds, d => d[0])
+        y_lim = d3.extent(final_ds, d => d[1])
+        xScale = d3.scaleLinear().range([0, innerw]).domain([x_lim[0]-buffer, x_lim[1]+buffer]);
+        yScale = d3.scaleLinear().range([innerh, 0]).domain([y_lim[0]-buffer, y_lim[1]+buffer]);
+        
+        // clearGraph();
+
+        var svg2 = d3.select("#scatterpricerent").append("svg").attr("width", w).attr("height", h)
+                    .append("g")
+                    .attr("id","outergraph2")
+                    .attr("transform", "translate(" + outergraph_translate_x + "," + outergraph_translate_y + ")");
+        
+        var g = d3.select("#outergraph2")
+
+        // Build X-Axis
+        var x_axis_label = g.append("g")
+            .attr("transform", "translate(0," + innerh + ")")
+            .transition()
+            .duration(500)
+            .call(d3.axisBottom(xScale))
+            .attr("font-weight", "bold")
+
+        // Build Y-Axis
+        g.append("g")
+            .transition()
+            .duration(500)
+            .call(d3.axisLeft(yScale))
+            .attr("font-weight", "bold")
+
+            // Draw X Axis label
+        g.append("text")
+            .transition()
+            .duration(500)
+            .attr("y", innerh + 40)
+            .attr("x", innerw - 10)
+            .attr("text-anchor", "end")
+            .attr("font-weight", "bold")
+            .text(x_label);
+
+        // Draw Y Axis label
+        g.append("text")
+            .transition()
+            .duration(500)
+            .attr("transform", "rotate(-90)")
+            .attr("dy", "-30px")
+            .attr("text-anchor", "end")
+            .attr("font-weight", "bold")
+            .text(y_label);
+
+        // drawLegend()
+
+        g.append('g')
+            .selectAll("circle")
+            .data(final_ds)
+            .enter()
+            .append("circle")
+            .transition()
+            .duration(500)
+            .attr("cx", function (d) { return xScale(d[0]); } )
+            .attr("cy", function (d) { return yScale(d[1]); } )
+            .attr("r", 2)
+            .attr("id","pricescatter")
+            .style("fill", function(d){ return myColor(d[3]);});
+        
+        svg2.append('g').call(brush2);
+        // g.append('g')
+        // .selectAll("dot")
+        // .data(dataset.stratified.circle)
+        // .enter()
+        // .append("circle")
+        // .transition()
+        // .duration(500)
+        //     .attr("cx", function (d) { return xScale(d[0]); } )
+        //     .attr("cy", function (d) { return yScale(d[1]); } )
+        //     .attr("r", 2.5)
+        //     .attr("id","strat")
+        //     .style("fill", "green");
+            
+        // g.append('g')
+        // .selectAll("dot")
+        // .data(dataset.random.circle)
+        // .enter()
+        // .append("circle")
+        // .transition()
+        // .duration(500)
+        //     .attr("cx", function (d) { return xScale(d[0]); } )
+        //     .attr("cy", function (d) { return yScale(d[1]); } )
+        //     .attr("r", 2.5)
+        //     .attr("id","rand")
+        //     .style("fill", "blue");
+        };
+    </script>
+</html>
