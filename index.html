@@ -250,23 +250,23 @@
         };
         
         var drawScatterPlot = function(dataset){
-        var x_label="price",y_label="zri";
+        var x_label="price",y_label="review_scores_rating";
 
        
         var w = 400,
             h = 300;
-        var margin = 50;
+        var margin = 70;
         var innerw = w - margin;
         var innerh = h - margin;
         var outergraph_translate_x = 40;
-        var outergraph_translate_y = 2;
+        var outergraph_translate_y = 10;
 
-        final_ds = dataset.map(function(d) { return [+d.price,+d.ZRI,+d.index,d.neighbourhood_group]; })
+        final_ds = dataset.map(function(d) { return [+d.price,+d.review_scores_rating,+d.index,d.neighbourhood_group]; })
 
         // x_lim = d3.max(dataset, d=>+d.price)
         console.log(final_ds);
 
-        var buffer = 10;
+        var buffer = 2;
         // final_ds = dataset.original.circle.concat(dataset.stratified.circle,dataset.random.circle)
         x_lim = d3.extent(final_ds, d => d[0])
         y_lim = d3.extent(final_ds, d => d[1])
