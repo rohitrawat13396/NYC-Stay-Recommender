@@ -429,7 +429,7 @@
         y_lim = d3.extent(final_ds, d => d[1])
 
         if(type === "pricescatter"){
-        xScale = d3.scaleLinear().range([0, innerw]).domain([x_lim[0]-buffer, x_lim[1]+buffer]);
+        xScale = d3.scaleLinear().range([0, innerw]).domain([x_lim[0]-buffer-10, x_lim[1]+buffer]);
         yScale = d3.scaleLinear().range([innerh, 0]).domain([y_lim[0]-buffer, y_lim[1]+buffer]);
         }
         if(type === "pcascatter"){
@@ -595,11 +595,11 @@
                 function update(data) {
                 // Update the X axis
                 xScalebar.domain(data.map(function(d) { return d.group; }))
-                xAxis.call(d3.axisBottom(xScalebar))
+                xAxis.call(d3.axisBottom(xScalebar)).attr("font-weight", "bold");
 
                 // Update the Y axis
                 yScalebar.domain([0, d3.max(data, function(d) { return d.value }) ]);
-                yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar));
+                yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar)).attr("font-weight", "bold");
 
                 // Create the u variable
                 var u = svgbarchart.selectAll("rect")
