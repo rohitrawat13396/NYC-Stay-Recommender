@@ -328,6 +328,8 @@
                 .attr("d", pathGenerator);
 
             // With map made, load data and add it to the map
+            // TO DO: Flask API call here, load data from flask
+            // We need PC1 and PC2 columns in the dataset for PCA
             d3.csv('stratified_sampled_data.csv', function(error2, airbnbdata) {
                 if (error2) return console.error(error2);
                 var neighbourhood_groups = airbnbdata.map(function(d) { return d.neighbourhood_group; })
@@ -400,6 +402,8 @@
         final_ds = dataset.map(function(d) { return [+d.price,+d.review_scores_rating,+d.index,d.neighbourhood_group]; })
         }
         if(type === "pcascatter"){
+        // TO DO: Flask API call, don't call the API here, just rename
+        // Rename price_zscore to PC1 and crime_zscore to PC2
         final_ds = dataset.map(function(d) { return [+d.price_zscore,+d.crime_zscore,+d.index,d.neighbourhood_group]; })
         }
         var buffer = 2;
