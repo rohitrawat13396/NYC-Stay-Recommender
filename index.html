@@ -141,7 +141,7 @@
         
         // Highlight the selected circles.
         function brushmove(p) {
-            
+        inside_brush = []
         var e = d3.brushSelection(this);
         d3.select("body").selectAll("#mapscatter").classed("hidden", function(d) {
             // to return default true, checkConditions should return false
@@ -164,7 +164,7 @@
         }
 
         function brushmove2(p) {
-            
+            inside_brush = []
             var e = d3.brushSelection(this);
             
             d3.select("body").selectAll("#pricescatter").classed("hidden", function(d) {
