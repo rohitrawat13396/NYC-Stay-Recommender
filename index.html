@@ -41,14 +41,14 @@
             position:absolute;
             top:10px;
             left:10px;
-            width:600px;
-            height: 600px; 
+            width:500px;
+            height: 500px; 
         }
 
         #scatterpricerent {    
             position:absolute;
             top:10px;
-            left:650px;
+            left:520px;
             height: 400px;
             width:600px;
         }
@@ -56,8 +56,8 @@
     </style>
     <script>
 
-        var w = 600,
-            h = 600;
+        var w = 500,
+            h = 500;
         var margin = 20;
         var innerw = w - margin;
         var innerh = h - margin;
@@ -201,7 +201,7 @@
 
         var projection = d3.geoMercator() // mercator makes it easy to center on specific lat/long
             .scale(50000)
-            .center([-73.730461,40.732183]); // long, lat of NYC
+            .center([-73.653465,40.668535]); // long, lat of NYC
 
         var pathGenerator = d3.geoPath()
             .projection(projection);
