@@ -11,6 +11,7 @@
         <div id="map"></div>
         <div id="pricescatterdiv"></div>
         <div id="pcascatterdiv"></div>
+        <div id="barchartdiv"></div>
         
     </body>
 
@@ -60,6 +61,14 @@
             width:400px;
         }
 
+        #barchartdiv {    
+            position:absolute;
+            top:330px;
+            left:520px;
+            height: 300px;
+            width:800px;
+        }
+
     </style>
     <script>
 
@@ -74,7 +83,13 @@
         var yScale;
         var xScale2;
         var yScale2;
+        var xScalebar;
+        var yScalebar;
+        var xAxis;
+        var yAxis;
+        var svgbarchart;
         var myColor;
+        var grouped_bar_items;
         
         svg = d3.select("#map").append("svg").attr("width", w).attr("height", h).append("g")
                     .attr("id","outergraph")
@@ -147,8 +162,13 @@
         function brushstart(p) {
             console.log("inside brush start");
             inside_brush = [];
+            // restore original bar
+            // TO DO: Remove slicing from here once flask API is implemented
+            orig_items = grouped_bar_items.slice(0,11)
+            update(orig_items);
         if (brushCell !== this) {
             d3.select(brushCell).call(brush.move, null);
+            
             brushCell = this;
             }
         }
@@ -156,6 +176,9 @@
         function brushstart2(p) {
             console.log("inside brush start");
             inside_brush = [];
+            // TO DO: Remove slicing from here once flask API is implemented
+            orig_items = grouped_bar_items.slice(0,11)
+            update(orig_items);
         if (brushCell2 !== this) {
             d3.select(brushCell2).call(brush2.move, null);
             brushCell2 = this;
@@ -165,6 +188,9 @@
         function brushstart3(p) {
             console.log("inside brush start");
             inside_brush = [];
+            // TO DO: Remove slicing from here once flask API is implemented
+            orig_items = grouped_bar_items.slice(0,11)
+            update(orig_items);
         if (brushCell3 !== this) {
             d3.select(brushCell3).call(brush3.move, null);
             brushCell3 = this;
@@ -265,6 +291,18 @@
                         }
                     });
             }
+
+            // TO DO: FLASK API call here, result should go in random_items_to_update
+            // Take input to API as set_inside_brush, which has the index of all the rows inside the brushed area
+            const n = 12;
+            const random_items_to_update = grouped_bar_items
+            .map(x => ({ x, r: Math.random() }))
+            .sort((a, b) => a.r - b.r)
+            .map(a => a.x)
+            .slice(0, n);
+            
+            update(random_items_to_update);
+
         }
         // If the brush is empty, select all circles.
         function brushend() {
@@ -295,9 +333,31 @@
                 var neighbourhood_groups = airbnbdata.map(function(d) { return d.neighbourhood_group; })
                 var neighbourhoods = Array.from(new Set(neighbourhood_groups));
                 myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
+
+                 // TO DO: FLASK API call here, results of default API call should go in result
+                 // keep grouped_bar_items = result, we need it to restore the array later
+                // grouping zip codes default
+                // result should look like this, for example [{group:Jan, value: 100},{group:Feb, value: 1000}]
+                // for all 12 months until December 2019
+                var result = [];
+                airbnbdata.reduce(function(res, val) {
+                if (!res[val.zipcodes]) {
+                    res[val.zipcodes] = { group: val.zipcodes, value: 0 };
+                    result.push(res[val.zipcodes])
+                }
+                res[val.zipcodes].value += +val.CMPLNT_NUM_count_sum;
+                return res;
+                }, {});
+
+                grouped_bar_items = result;
+
+                // TO DO: After implementing FLASK API call, remove slicing from here
+                result = result.slice(0, 11);
+
                 addPointsToMap(airbnbdata,neighbourhoods);
                 drawScatterPlot(airbnbdata,"Price/Night","Rating","pricescatter");
                 drawScatterPlot(airbnbdata,"PC1","PC2","pcascatter");
+                drawBarChart(result);
                 
             });
 
@@ -452,6 +512,79 @@
         svg2.append('g').call(brush3);
         }
         };
+
+
+        var drawBarChart = function(dataset){
+
+            var data1 = dataset;
+
+                // set the dimensions and margins of the graph
+    //             var margin = {top: 30, right: 30, bottom: 70, left: 60},
+    // width = 460 - margin.left - margin.right,
+    // height = 400 - margin.top - margin.bottom;
+                var w = 800,
+                    h = 300;
+                var margin = 70;
+                var innerw = w - margin;
+                innerhbar = h - margin;
+                var outergraph_translate_x = 60;
+                var outergraph_translate_y = 10;
+
+                svgbarchart = d3.select("#barchartdiv")
+                    .append("svg").attr("width", w).attr("height", h).append("g")
+                    .attr("id","outergraphbarchart")
+                    .attr("transform", "translate(" + outergraph_translate_x + "," + outergraph_translate_y + ")");
+      
+
+                // Initialize the X axis
+                xScalebar = d3.scaleBand()
+                .range([ 0, innerw ])
+                .padding(0.2);
+                xAxis = svgbarchart.append("g")
+                .attr("transform", "translate(0," + innerhbar + ")")
+
+                // Initialize the Y axis
+                yScalebar = d3.scaleLinear()
+                .range([innerhbar, 0]);
+                yAxis = svgbarchart.append("g")
+                .attr("class", "myYaxis")
+
+                // Initialize the plot with the dataset passed
+                update(data1)
+
+        }
+
+                // A function that create / update the plot for a given variable:
+                function update(data) {
+                // Update the X axis
+                xScalebar.domain(data.map(function(d) { return d.group; }))
+                xAxis.call(d3.axisBottom(xScalebar))
+
+                // Update the Y axis
+                yScalebar.domain([0, d3.max(data, function(d) { return d.value }) ]);
+                yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar));
+
+                // Create the u variable
+                var u = svgbarchart.selectAll("rect")
+                    .data(data)
+
+                u.enter()
+                    .append("rect") // Add a new rect for each new elements
+                    .merge(u) // get the already existing elements as well
+                    .transition() // and apply changes to all of them
+                    .duration(1000)
+                    .attr("x", function(d) { return xScalebar(d.group); })
+                    .attr("y", function(d) { return yScalebar(d.value); })
+                    .attr("width", xScalebar.bandwidth())
+                    .attr("height", function(d) { return innerhbar - yScalebar(d.value); })
+                    .attr("fill", "#69b3a2")
+
+                // If less group in the new dataset, I delete the ones not in use anymore
+                u
+                    .exit()
+                    .remove()
+                }
+
 
         function drawLegend(neighbourhoods){
         
