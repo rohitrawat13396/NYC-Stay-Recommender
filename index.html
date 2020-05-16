@@ -295,20 +295,21 @@
                 var neighbourhood_groups = airbnbdata.map(function(d) { return d.neighbourhood_group; })
                 var neighbourhoods = Array.from(new Set(neighbourhood_groups));
                 myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
-                addPointsToMap(airbnbdata);
+                addPointsToMap(airbnbdata,neighbourhoods);
                 drawScatterPlot(airbnbdata,"Price/Night","Rating","pricescatter");
                 drawScatterPlot(airbnbdata,"PC1","PC2","pcascatter");
+                
             });
 
         });
 
-        var addPointsToMap = function(airbnbdata) {
+        var addPointsToMap = function(airbnbdata,neighbourhoods) {
             var radiusScale = d3.scaleSqrt()
                 // .domain([d3.extent(crimeData, function(crime) { return +crime.TOT; })])
                 .domain([1,5])
                 .range([2, 15]);
 
-            
+            drawLegend(neighbourhoods);
             all_circles = svg.selectAll("circle")
                 .data(airbnbdata)
               .enter().append("circle")
@@ -452,7 +453,30 @@
         }
         };
 
+        function drawLegend(neighbourhoods){
+        
+        console.log(neighbourhoods);
+        var legend = d3.select("#outergraph").selectAll(".legend").raise()
+            .data(neighbourhoods)
+            .enter().append("g")
+            .attr("class", "legend")
+            .attr("transform", function(d, i) { return "translate(-520," + i * 20 + ")"; });
+        
+        legend.raise().append("rect")
+            .attr("x", innerw - 18)
+            .attr("width", 18)
+            .attr("height", 18)
+            .style("fill", function(d){return myColor(d);});
 
+        legend.append("text")
+            .attr("x", innerw + 10)
+            .attr("y", 9)
+            .attr("dy", ".35em")
+            .style("text-anchor", "start")
+            .text(function(d) { return d; })
+            .style("stroke","black");
+    
+    };
         
     </script>
 </html>
