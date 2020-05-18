@@ -126,6 +126,7 @@
         var yAxis;
         var svgbarchart;
         var neighbourhoods = ["Queens", "Manhattan", "Brooklyn", "Bronx", "Staten Island"]
+        var curr_neighborhoods = ["Queens", "Manhattan", "Brooklyn", "Bronx", "Staten Island"]
         var myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
         var grouped_bar_items;
         var table_items;
@@ -162,10 +163,10 @@
                 var map_check = true;
                 var cx = projection([+d.longitude, +d.latitude])[0];
                             cy = projection([+d.longitude, +d.latitude])[1];
+                // console.log(curr_neighborhoods.includes(d.neighbourhood_group))
                 if( !(e[0][0] > cx || cx > e[1][0]
-                    || e[0][1] > cy || cy > e[1][1])){
+                    || e[0][1] > cy || cy > e[1][1]) && curr_neighborhoods.includes(d.neighbourhood_group)){
                         inside_brush.push(+d.index);
-                        console.log(d.neighbourhood_group,d.index);
                         map_check = false;
                     }
                     return map_check;
@@ -176,7 +177,7 @@
             var cx = xScale(d[0]);
                                cy =  yScale(d[1]);
                 if( !(e[0][0] > cx || cx > e[1][0]
-                    || e[0][1] > cy || cy > e[1][1])){
+                    || e[0][1] > cy || cy > e[1][1]) && curr_neighborhoods.includes(d[3])){
                         inside_brush.push(+d[2]);
                         scatter_price_zri_check = false;
                     }
@@ -188,7 +189,7 @@
             var cx = xScale2(d[0]);
                                cy =  yScale2(d[1]);
                 if( !(e[0][0] > cx || cx > e[1][0]
-                    || e[0][1] > cy || cy > e[1][1])){
+                    || e[0][1] > cy || cy > e[1][1]) && curr_neighborhoods.includes(d[3])){
                         inside_brush.push(+d[2]);
                         pca_scatter_check = false;
                     }
@@ -207,10 +208,8 @@
             set_inside_brush = [];
             // restore original bar
             // TO DO: Remove slicing from here once flask API is implemented
-            console.log(grouped_bar_items);
-            orig_items = grouped_bar_items.slice(0,11)
-            update(orig_items);
-            populateTable(table_items);
+            barChartUpdate();
+            tableUpdate();
         if (brushCell !== this) {
             d3.select(brushCell).call(brush.move, null);
             
@@ -223,9 +222,8 @@
             inside_brush = [];
             set_inside_brush = [];
             // TO DO: Remove slicing from here once flask API is implemented
-            orig_items = grouped_bar_items.slice(0,11)
-            update(orig_items);
-            populateTable(table_items);
+            barChartUpdate();
+            tableUpdate();
         if (brushCell2 !== this) {
             d3.select(brushCell2).call(brush2.move, null);
             brushCell2 = this;
@@ -237,9 +235,8 @@
             inside_brush = [];
             set_inside_brush = [];
             // TO DO: Remove slicing from here once flask API is implemented
-            orig_items = grouped_bar_items.slice(0,11)
-            populateTable(table_items);
-            update(orig_items);
+            barChartUpdate();
+            tableUpdate();
         if (brushCell3 !== this) {
             d3.select(brushCell3).call(brush3.move, null);
             brushCell3 = this;
@@ -449,7 +446,8 @@
                 .attr("cx", function(d) { return projection([+d.longitude, +d.latitude])[0]; })
                 .attr("cy", function(d) { return projection([+d.longitude, +d.latitude])[1]; })
                 .attr("id","mapscatter")
-                .attr("idx",function(d){ return +d.index})
+                // .attr("idx",function(d){ return +d.index})
+                .attr("borough",function(d) {return d.neighbourhood_group;} )
                 .attr("r",  function(d) { return 2 });
 
             svg.append("g")
@@ -577,7 +575,8 @@
             } )
             .attr("r", 2)
             .attr("id",type)
-            .attr("idx",function(d){ return d[2]})
+            .attr("borough",function(d) {return d[3];} )
+            // .attr("idx",function(d){ return d[2]})
             .style("fill", function(d){ return myColor(d[3]);});
         
         if(type === "pricescatter"){
@@ -595,11 +594,11 @@
 
                 var w = 800,
                     h = 250;
-                var margin = 70;
+                var margin = 80;
                 var innerw = w - margin;
                 innerhbar = h - margin;
                 var outergraph_translate_x = 60;
-                var outergraph_translate_y = 10;
+                var outergraph_translate_y = 20;
 
                 svgbarchart = d3.select("#barchartdiv")
                     .append("svg").attr("width", w).attr("height", h).append("g")
@@ -650,10 +649,11 @@
                 update(data1)
 
         }
+        var origx,origy,origw,origh;
 
                 // A function that create / update the plot for a given variable:
                 function update(data) {
-                // Update the X axis
+                // // Update the X axis
                 // xScalebar.domain(data.map(function(d) { return d.group; }))
                 // xAxis.call(d3.axisBottom(xScalebar)).attr("font-weight", "bold");
 
@@ -664,7 +664,9 @@
                 // Create the u variable
                 var u = svgbarchart.selectAll("rect")
                     .data(data)
-
+                
+                min_val = d3.min(data, function(d){return d.value;});
+                max_val = d3.max(data, function(d){return d.value;});
                 u.enter()
                     .append("rect") // Add a new rect for each new elements
                     .merge(u) // get the already existing elements as well
@@ -674,7 +676,53 @@
                     .attr("y", function(d) { return yScalebar(d.value); })
                     .attr("width", xScalebar.bandwidth())
                     .attr("height", function(d) { return innerhbar - yScalebar(d.value); })
-                    .attr("fill", "#FF385C")
+                    .attr("fill", function(d){ 
+                        red_val = Math.round((((+d.value) - min_val)/(max_val-min_val))*30);
+                        red_val = 255-red_val;
+                        return "rgb("+red_val+",56,92)" 
+                    })
+                d3.select("#outergraphbarchart").selectAll("rect").on("mouseover", function (d, i) {
+                        // Store original values before highlighting
+                        origx = xScalebar(d.group);
+                        origy = yScalebar(d.value);
+                        origw = xScalebar.bandwidth();
+                        origh = innerhbar - yScalebar(d.value);
+                        increase_x = 3;
+                        increase_y = 5;
+                        increase_w_h = 5;
+
+                        // Highlight and increase width and height
+                        d3.select(this).transition().duration(200).attr("fill", "red")
+                        .attr("x", origx - increase_x)
+                        .attr("y", origy - increase_y)
+                        .attr("width", origw + increase_w_h)
+                        .attr("height", origh + increase_w_h)
+
+                        // Append text to parent node to display on top of bar
+                        d3.select(this.parentNode)
+                        .append("text")
+                        .text(d.value)
+                        .attr("text-anchor", "middle")
+                        .attr("x", origx + xScalebar.bandwidth() / 2 - increase_x)
+                        .attr("y", origy - 2 - increase_y)
+                        .attr("class", "addedtext");
+
+                        })
+                        .on("mouseout", function (d) {
+                        //Reset to original values
+                        d3.select(this).transition().attr("fill", function () {
+                            red_val = Math.round((((+d.value) - min_val)/(max_val-min_val))*30);
+                            red_val = 255-red_val;
+                            return "rgb("+red_val+",56,92)" 
+                        })
+                            .attr("x", origx)
+                            .attr("y", origy)
+                            .attr("width", origw)
+                            .attr("height", origh);
+
+                        // Remove appended text
+                        d3.select(".addedtext").remove();
+                        });
 
                 // If less group in the new dataset, I delete the ones not in use anymore
                 u
@@ -685,7 +733,6 @@
 
         function drawLegend(neighbourhoods){
         
-        console.log(neighbourhoods);
         var legend = d3.select("#outergraph").selectAll(".legend").raise()
             .data(neighbourhoods)
             .enter().append("g")
@@ -696,7 +743,41 @@
             .attr("x", innerw - 18)
             .attr("width", 18)
             .attr("height", 18)
-            .style("fill", function(d){return myColor(d);});
+            .style("fill", function(d){return myColor(d);})
+            .on("click",function(d){
+                if(curr_neighborhoods.includes(d)){
+                    curr_neighborhoods = curr_neighborhoods.filter(function(item) {
+                                return item !== d
+                            });
+                    d3.select(this).transition().duration(500).style("opacity","0.2");
+                    d3.selectAll("[borough~="+d.split(" ")[0]+"]").transition().duration(500).style("opacity","0.0")
+                }
+                else{
+                    curr_neighborhoods.push(d);
+                    d3.select(this).transition().duration(500).style("opacity","1.0");
+                    d3.selectAll("[borough~="+d.split(" ")[0]+"]").transition().duration(500).style("opacity","1.0")
+                }
+                jsonified_boroughs = JSON.stringify(curr_neighborhoods);
+                $.get("/tabledatafilter/"+jsonified_boroughs, function(result){
+                        result = JSON.parse(result);
+                        populateTable(result);
+                    });
+                $.get("/barcrimefilter/"+jsonified_boroughs, function(result){
+                result = JSON.parse(result);
+                items_to_update = result;
+                update(items_to_update);
+                });
+                // var toggle = d3.selectAll(curr_selection).style("opacity");
+                // if(toggle == 1)
+                // {
+                // d3.selectAll(curr_selection).transition().duration(500).style("opacity","0.0")
+                // d3.select(this).transition().duration(500).style("opacity","0.2");
+                // }
+                // else{
+                // d3.selectAll(curr_selection).transition().duration(500).style("opacity","1.0")
+                // d3.select(this).style("opacity","1.0");
+                // }
+            });
 
         legend.append("text")
             .attr("x", innerw + 10)
@@ -707,6 +788,23 @@
             .style("stroke","black");
     
     };
+
+    function barChartUpdate(){
+        jsonified_boroughs = JSON.stringify(curr_neighborhoods);
+        $.get("/barcrimefilter/"+jsonified_boroughs, function(result){
+                result = JSON.parse(result);
+                items_to_update = result;
+                update(items_to_update);
+                });
+    }
+
+    function tableUpdate(){
+        jsonified_boroughs = JSON.stringify(curr_neighborhoods);
+        $.get("/tabledatafilter/"+jsonified_boroughs, function(result){
+                        result = JSON.parse(result);
+                        populateTable(result);
+                    });
+    }
         
     </script>
 </html>

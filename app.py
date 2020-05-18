@@ -33,7 +33,8 @@ def do_PCA(data):
 
 variance,cumulative_var_percentage,trans_matrix = do_PCA(data_for_pca)
 trans_matrix["neighbourhood_group"] = stratified_sample["neighbourhood_group"]
-trans_matrix.columns = ["PC1","PC2","neighbourhood_group"]
+trans_matrix["index"] = stratified_sample["index"]
+trans_matrix.columns = ["PC1","PC2","neighbourhood_group","index"]
 trans_matrix = trans_matrix.reset_index()
 
 @app.route("/")
@@ -47,7 +48,7 @@ def get_geodata():
 @app.route("/map")
 def get_map_data(): 
     map_data = stratified_sample[["index","neighbourhood_group","longitude", "latitude"]]
-    map_data = map_data.to_json(orient = "records")  
+    map_data = map_data.to_json(orient = "records") 
     return map_data
 
 @app.route("/pricescatter")
@@ -57,7 +58,7 @@ def get_pricescatter_data():
     return pricescatter_data
 
 @app.route("/pcascatter")
-def get_pcascatter_data():  
+def get_pcascatter_data():
     pcascatter_data = trans_matrix[["index","neighbourhood_group","PC1", "PC2"]]
     pcascatter_data = pcascatter_data.to_json(orient = "records")  
     return pcascatter_data  
@@ -66,7 +67,6 @@ def get_pcascatter_data():
 @app.route("/barcrime/<indexids>",methods = ['GET'])
 def get_barcrime_data(indexids):    
     json_indexids = json.dumps(indexids)
-    # print(json.loads(zipcodes))
     month_dict = {1:"JAN",2:"FEB",3:"MAR",4:"APR",5:"MAY",6:"JUN",7:"JUL",8:"AUG",9:"SEP",10:"OCT",11:"NOV",12:"DEC"}
     if json_indexids == "\"all\"":
         brushed_zipcodes = grouped_multiple_data.zipcodes.unique()
@@ -87,10 +87,30 @@ def get_barcrime_data(indexids):
     grouped_by_month["value"] = grouped_by_month["CMPLNT_NUM_count"]
 
     return grouped_by_month[["group","value"]].to_json(orient="records")
+    
+@app.route("/barcrimefilter/<boroughs>",methods = ['GET'])
+def get_barcrime_data_filter(boroughs):    
+    boroughs = boroughs.replace("\"","")
+    borough_list = json.dumps(boroughs) 
+    borough_list = json.loads(borough_list)[1:-1]
+    borough_list = list(borough_list.split(','))
+
+    filtered_sample = stratified_sample.loc[stratified_sample["neighbourhood_group"].isin(borough_list)]["zipcodes"].unique().astype(np.int32)
+
+    month_dict = {1:"JAN",2:"FEB",3:"MAR",4:"APR",5:"MAY",6:"JUN",7:"JUL",8:"AUG",9:"SEP",10:"OCT",11:"NOV",12:"DEC"}
+    grouped_filtered = grouped_multiple_data.loc[grouped_multiple_data['zipcodes'].isin(filtered_sample)]
+
+    grouped_by_month = grouped_filtered[["CMPLNT_MONTH","CMPLNT_NUM_count"]].groupby("CMPLNT_MONTH").sum().reset_index()
+
+    grouped_by_month = grouped_by_month[grouped_by_month["CMPLNT_MONTH"]>6]
+
+    grouped_by_month["group"] = grouped_by_month["CMPLNT_MONTH"].map(month_dict)
+    grouped_by_month["value"] = grouped_by_month["CMPLNT_NUM_count"]
+
+    return grouped_by_month[["group","value"]].to_json(orient="records")
 
 @app.route("/tabledata/<indexids>",methods = ['GET'])
-def get_table_data(indexids):  
-    
+def get_table_data(indexids):
     columns = ["neighbourhood_group","name","description","listing_url"]
     json_indexids = json.dumps(indexids) 
     if json_indexids == "\"all\"":
@@ -100,9 +120,22 @@ def get_table_data(indexids):
         stratified_sample_new  =  stratified_sample.set_index('index')
         json_indexes = json.loads(json_indexids)[1:-1]
         json_indexes = list(map(int,json_indexes.split(',')))
-        # print(json_indexes)
-        # print(stratified_sample_new)
-        print(stratified_sample_new[stratified_sample_new.index.isin(json_indexes)][["neighbourhood_group","name","description","listing_url","latitude","longitude"]])
         brushed_sample = stratified_sample_new[stratified_sample_new.index.isin(json_indexes)].sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
-        # print(brushed_sample)
         return brushed_sample.to_json(orient="records")
+
+@app.route("/tabledatafilter/<boroughs>",methods = ['GET'])
+def get_table_data_filter(boroughs):
+    columns = ["neighbourhood_group","name","description","listing_url"]
+    boroughs = boroughs.replace("\"","")
+    borough_list = json.dumps(boroughs) 
+    borough_list = json.loads(borough_list)[1:-1]
+    borough_list = list(borough_list.split(','))
+
+    print(borough_list)
+    
+    stratified_sample_new  =  stratified_sample.set_index('index')
+    print(stratified_sample_new["neighbourhood_group"].unique())
+
+    brushed_sample = stratified_sample_new[stratified_sample_new["neighbourhood_group"].isin(borough_list)].sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
+    print(brushed_sample)
+    return brushed_sample.to_json(orient="records")
