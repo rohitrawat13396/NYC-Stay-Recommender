@@ -428,7 +428,9 @@
                 var tablerow = tableData[i];
                 curr_row.append("td").text(tablerow.neighbourhood_group);
                 // curr_row.append("td").text(tablerow.name);
-                curr_row.append("td").text(tablerow.listing_url);
+                curr_row.append("td").append("a").attr("class","waves-effect waves-light btn").attr("href",tablerow.listing_url)
+                .attr("target","_blank")
+                .text("Book");
                 }
 
         }
