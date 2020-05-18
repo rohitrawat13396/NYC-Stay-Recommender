@@ -35,7 +35,6 @@ variance,cumulative_var_percentage,trans_matrix = do_PCA(data_for_pca)
 trans_matrix["neighbourhood_group"] = stratified_sample["neighbourhood_group"]
 trans_matrix.columns = ["PC1","PC2","neighbourhood_group"]
 trans_matrix = trans_matrix.reset_index()
-stratified_sample = stratified_sample.reset_index()
 
 @app.route("/")
 def index():
@@ -49,6 +48,7 @@ def get_geodata():
 def get_map_data(): 
     map_data = stratified_sample[["index","neighbourhood_group","longitude", "latitude"]]
     map_data = map_data.to_json(orient = "records")  
+    print(map_data)
     return map_data
 
 @app.route("/pricescatter")
@@ -64,69 +64,46 @@ def get_pcascatter_data():
     return pcascatter_data  
     
 
-@app.route("/barcrime/<zipcodes>",methods = ['GET'])
-def get_barcrime_data(zipcodes):    
-    print("printing zipcodes")
-    json_zipcodes = json.dumps(zipcodes)
+@app.route("/barcrime/<indexids>",methods = ['GET'])
+def get_barcrime_data(indexids):    
+    json_indexids = json.dumps(indexids)
     # print(json.loads(zipcodes))
     month_dict = {1:"JAN",2:"FEB",3:"MAR",4:"APR",5:"MAY",6:"JUN",7:"JUL",8:"AUG",9:"SEP",10:"OCT",11:"NOV",12:"DEC"}
-    if json_zipcodes == "\"all\"":
+    if json_indexids == "\"all\"":
         brushed_zipcodes = grouped_multiple_data.zipcodes.unique()
-        # brushed_sample = stratified_sample[stratified_sample.index.isin(brushed_zipcodes)]["zipcodes"].unique().astype(np.int32)
-
         grouped_filtered = grouped_multiple_data.loc[grouped_multiple_data['zipcodes'].isin(brushed_zipcodes)]
-
-        grouped_by_month = grouped_filtered[["CMPLNT_MONTH","CMPLNT_NUM_count"]].groupby("CMPLNT_MONTH").sum().reset_index()
-
-        grouped_by_month = grouped_by_month[grouped_by_month["CMPLNT_MONTH"]>6]
-
-        grouped_by_month["group"] = grouped_by_month["CMPLNT_MONTH"].map(month_dict)
-        grouped_by_month["value"] = grouped_by_month["CMPLNT_NUM_count"]
-
-        return grouped_by_month[["group","value"]].to_json(orient="records")
     else:
-        json_indexes = json.loads(json_zipcodes)[1:-1]
-        
+        json_indexes = json.loads(json_indexids)[1:-1]
         json_indexes = list(map(int,json_indexes.split(',')))
-        brushed_zipcodes = json_indexes
-       
-        brushed_sample = stratified_sample[stratified_sample.index.isin(brushed_zipcodes)]["zipcodes"].unique().astype(np.int32)
-
+        stratified_sample_new  =  stratified_sample.set_index('index')
+        brushed_sample = stratified_sample_new[stratified_sample_new.index.isin(json_indexes)]["zipcodes"].unique().astype(np.int32)
+        # print(stratified_sample[stratified_sample.index.isin(json_indexes)][["neighbourhood_group","name"]])
         grouped_filtered = grouped_multiple_data.loc[grouped_multiple_data['zipcodes'].isin(brushed_sample)]
 
-        grouped_by_month = grouped_filtered[["CMPLNT_MONTH","CMPLNT_NUM_count"]].groupby("CMPLNT_MONTH").sum().reset_index()
+    grouped_by_month = grouped_filtered[["CMPLNT_MONTH","CMPLNT_NUM_count"]].groupby("CMPLNT_MONTH").sum().reset_index()
 
-        grouped_by_month = grouped_by_month[grouped_by_month["CMPLNT_MONTH"]>6]
+    grouped_by_month = grouped_by_month[grouped_by_month["CMPLNT_MONTH"]>6]
 
-        grouped_by_month["group"] = grouped_by_month["CMPLNT_MONTH"].map(month_dict)
-        grouped_by_month["value"] = grouped_by_month["CMPLNT_NUM_count"]
+    grouped_by_month["group"] = grouped_by_month["CMPLNT_MONTH"].map(month_dict)
+    grouped_by_month["value"] = grouped_by_month["CMPLNT_NUM_count"]
 
-        return grouped_by_month[["group","value"]].to_json(orient="records")
-        # print(stratified_sample.index)
-        # print(stratified_sample[json_indexes])
-        # df[df.index.isin(my_list)]
+    return grouped_by_month[["group","value"]].to_json(orient="records")
+
+@app.route("/tabledata/<indexids>",methods = ['GET'])
+def get_table_data(indexids):  
     
-    # filterdataset =  pd.DataFrame()
-    # for zc in brushed_zipcodes:
-    #     filterdataset = filterdataset.append(grouped_multiple_data[grouped_multiple_data.zipcodes.eq(zc)])
-
-    # res = {}
-    # result = {}
-    # months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"]
-    # final_result = []
-
-    # for i in range(1,13):
-    #     result[i] = 0
-
-    # for row in filterdataset.iterrows():
-    #     if row[1].zipcodes not in res:
-    #         res[row[1].zipcodes] = {row[1].CMPLNT_MONTH: row[1].CMPLNT_NUM_count}
-    #         result[row[1].CMPLNT_MONTH] =  +row[1].CMPLNT_NUM_count
-    #     res[row[1].zipcodes][row[1].CMPLNT_MONTH]= row[1].CMPLNT_NUM_count
-    #     result[row[1].CMPLNT_MONTH] +=  row[1].CMPLNT_NUM_count
-
-    # for month,key2 in zip(months,result.keys()):
-    #     final_result.append({'group': month, 'value': str(result[key2])})
-    # final_result = final_result[6:12]
-    # print(final_result)
-    # return json.dumps(final_result)
+    columns = ["neighbourhood_group","name","description","listing_url"]
+    json_indexids = json.dumps(indexids) 
+    if json_indexids == "\"all\"":
+        top_3_default = stratified_sample.sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
+        return top_3_default.to_json(orient="records")
+    else:
+        stratified_sample_new  =  stratified_sample.set_index('index')
+        json_indexes = json.loads(json_indexids)[1:-1]
+        json_indexes = list(map(int,json_indexes.split(',')))
+        print(json_indexes)
+        print(stratified_sample_new)
+        print(stratified_sample_new[stratified_sample_new.index.isin(json_indexes)][["neighbourhood_group","name","description","listing_url","latitude","longitude"]])
+        brushed_sample = stratified_sample_new[stratified_sample_new.index.isin(json_indexes)].sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
+        print(brushed_sample)
+        return brushed_sample.to_json(orient="records")

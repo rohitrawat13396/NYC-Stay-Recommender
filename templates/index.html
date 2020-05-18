@@ -26,26 +26,10 @@
                 <thead>
                   <tr>
                       <th>Borough</th>
-                      <th>Name</th>
-                      <th>Link</th>
+                      <th>Recommendation</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <!-- <tr> [[Alvin,Eclair,$0.87],[Alan,Jellybean,$3.76]]
-                    <td>Alvin</td>
-                    <td>Eclair</td>
-                    <td>$0.87</td>
-                  </tr>
-                  <tr>
-                    <td>Alan</td>
-                    <td>Jellybean</td>
-                    <td>$3.76</td>
-                  </tr>
-                  <tr>
-                    <td>Jonathan</td>
-                    <td>Lollipop</td>
-                    <td>$7.00</td>
-                  </tr> -->
                 </tbody>
               </table>
         </div>
@@ -92,7 +76,7 @@
 
         #resultstable{
             position:absolute;
-            top:540px;
+            top:450px;
             left:10px;
             width: 100px;
             height: 100px;     
@@ -101,7 +85,7 @@
         #pricescatterdiv {    
             position:absolute;
             top:60px;
-            left:520px;
+            left:450px;
             height: 400px;
             width:600px;
         }
@@ -109,16 +93,16 @@
         #pcascatterdiv {    
             position:absolute;
             top:60px;
-            left:950px;
+            left:850px;
             height: 400px;
             width:400px;
         }
 
         #barchartdiv {    
             position:absolute;
-            top:345px;
-            left:520px;
-            height: 300px;
+            top:335px;
+            left:430px;
+            height: 240px;
             width:800px;
         }
 
@@ -144,6 +128,7 @@
         var neighbourhoods = ["Queens", "Manhattan", "Brooklyn", "Bronx", "Staten Island"]
         var myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
         var grouped_bar_items;
+        var table_items;
         var items_to_update;
         var set_inside_brush;
         
@@ -180,6 +165,7 @@
                 if( !(e[0][0] > cx || cx > e[1][0]
                     || e[0][1] > cy || cy > e[1][1])){
                         inside_brush.push(+d.index);
+                        console.log(d.neighbourhood_group,d.index);
                         map_check = false;
                     }
                     return map_check;
@@ -224,6 +210,7 @@
             console.log(grouped_bar_items);
             orig_items = grouped_bar_items.slice(0,11)
             update(orig_items);
+            populateTable(table_items);
         if (brushCell !== this) {
             d3.select(brushCell).call(brush.move, null);
             
@@ -238,6 +225,7 @@
             // TO DO: Remove slicing from here once flask API is implemented
             orig_items = grouped_bar_items.slice(0,11)
             update(orig_items);
+            populateTable(table_items);
         if (brushCell2 !== this) {
             d3.select(brushCell2).call(brush2.move, null);
             brushCell2 = this;
@@ -250,6 +238,7 @@
             set_inside_brush = [];
             // TO DO: Remove slicing from here once flask API is implemented
             orig_items = grouped_bar_items.slice(0,11)
+            populateTable(table_items);
             update(orig_items);
         if (brushCell3 !== this) {
             d3.select(brushCell3).call(brush3.move, null);
@@ -372,13 +361,18 @@
                 console.log(items_to_update);
                 update(items_to_update);
             });
+
+        $.get("/tabledata/"+jsonified_set, function(result){
+                result = JSON.parse(result);
+                populateTable(result);
+            });
         }
         if (e === null) d3.select("body").selectAll(".hidden").classed("hidden", false);
         }
 
         var projection = d3.geoMercator() // mercator makes it easy to center on specific lat/long
-            .scale(45000)
-            .center([-73.623560,40.652308]);// long, lat of NYC
+            .scale(38000)
+            .center([-73.483560,40.612308]);// long, lat of NYC
 
         var pathGenerator = d3.geoPath()
             .projection(projection);
@@ -419,8 +413,25 @@
                 grouped_bar_items = result;
                 drawBarChart(result);
             });
+
+            $.get("/tabledata/all", function(result){
+                result = JSON.parse(result);
+                table_items = result;
+                populateTable(result);
+            });
                 
             });
+        var populateTable = function(tableData){
+            d3.select("tbody").selectAll("*").remove();
+            for(var i = 0; i < tableData.length; i++) {
+                var curr_row = d3.select("tbody").append("tr")
+                var tablerow = tableData[i];
+                curr_row.append("td").text(tablerow.neighbourhood_group);
+                // curr_row.append("td").text(tablerow.name);
+                curr_row.append("td").text(tablerow.listing_url);
+                }
+
+        }
         
         var addPointsToMap = function(airbnbdata) {
             var radiusScale = d3.scaleSqrt()
@@ -448,7 +459,7 @@
 
        
         var w = 400,
-            h = 300;
+            h = 280;
         var margin = 70;
         var innerw = w - margin;
         var innerh = h - margin;
@@ -581,7 +592,7 @@
             var data1 = dataset;
 
                 var w = 800,
-                    h = 300;
+                    h = 250;
                 var margin = 70;
                 var innerw = w - margin;
                 innerhbar = h - margin;
