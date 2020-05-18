@@ -21,9 +21,37 @@
         <div id="pricescatterdiv"></div>
         <div id="pcascatterdiv"></div>
         <div id="barchartdiv"></div>
+        <div id="resultstable">
+            <table>
+                <thead>
+                  <tr>
+                      <th>Borough</th>
+                      <th>Name</th>
+                      <th>Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- <tr> [[Alvin,Eclair,$0.87],[Alan,Jellybean,$3.76]]
+                    <td>Alvin</td>
+                    <td>Eclair</td>
+                    <td>$0.87</td>
+                  </tr>
+                  <tr>
+                    <td>Alan</td>
+                    <td>Jellybean</td>
+                    <td>$3.76</td>
+                  </tr>
+                  <tr>
+                    <td>Jonathan</td>
+                    <td>Lollipop</td>
+                    <td>$7.00</td>
+                  </tr> -->
+                </tbody>
+              </table>
+        </div>
         
     </body>
-
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://d3js.org/d3.v4.min.js"></script>
     <script src="https://d3js.org/topojson.v2.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
@@ -60,6 +88,14 @@
             left:10px;
             width:500px;
             height: 500px; 
+        }
+
+        #resultstable{
+            position:absolute;
+            top:540px;
+            left:10px;
+            width: 100px;
+            height: 100px;     
         }
 
         #pricescatterdiv {    
@@ -105,8 +141,11 @@
         var xAxis;
         var yAxis;
         var svgbarchart;
-        var myColor;
+        var neighbourhoods = ["Queens", "Manhattan", "Brooklyn", "Bronx", "Staten Island"]
+        var myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
         var grouped_bar_items;
+        var items_to_update;
+        var set_inside_brush;
         
         svg = d3.select("#map").append("svg").attr("width", w).attr("height", h).append("g")
                     .attr("id","outergraph")
@@ -179,8 +218,10 @@
         function brushstart(p) {
             console.log("inside brush start");
             inside_brush = [];
+            set_inside_brush = [];
             // restore original bar
             // TO DO: Remove slicing from here once flask API is implemented
+            console.log(grouped_bar_items);
             orig_items = grouped_bar_items.slice(0,11)
             update(orig_items);
         if (brushCell !== this) {
@@ -193,6 +234,7 @@
         function brushstart2(p) {
             console.log("inside brush start");
             inside_brush = [];
+            set_inside_brush = [];
             // TO DO: Remove slicing from here once flask API is implemented
             orig_items = grouped_bar_items.slice(0,11)
             update(orig_items);
@@ -205,6 +247,7 @@
         function brushstart3(p) {
             console.log("inside brush start");
             inside_brush = [];
+            set_inside_brush = [];
             // TO DO: Remove slicing from here once flask API is implemented
             orig_items = grouped_bar_items.slice(0,11)
             update(orig_items);
@@ -225,7 +268,7 @@
                 var to_return = checkConditions(e,d,"map");
                 return !e? false: to_return;
             });
-            var set_inside_brush = new Set(inside_brush)
+            set_inside_brush = new Set(inside_brush)
             linkedBrush(brushed_area,set_inside_brush);
         }
 
@@ -237,7 +280,7 @@
                 var to_return = checkConditions(e,d,"pricescatter");
                 return !e? false: to_return;
             });
-            var set_inside_brush = new Set(inside_brush)
+            set_inside_brush = new Set(inside_brush)
             linkedBrush(brushed_area,set_inside_brush);
         }
 
@@ -249,7 +292,7 @@
                 var to_return = checkConditions(e,d,"pcascatter");
                 return !e? false: to_return;
             });
-            var set_inside_brush = new Set(inside_brush)
+            set_inside_brush = new Set(inside_brush)
             linkedBrush(brushed_area,set_inside_brush);
         }
 
@@ -311,26 +354,31 @@
 
             // TO DO: FLASK API call here, result should go in random_items_to_update
             // Take input to API as set_inside_brush, which has the index of all the rows inside the brushed area
-            const n = 12;
-            const random_items_to_update = grouped_bar_items
-            .map(x => ({ x, r: Math.random() }))
-            .sort((a, b) => a.r - b.r)
-            .map(a => a.x)
-            .slice(0, n);
             
-            update(random_items_to_update);
+            // console.log(items_to_update)
+            
 
         }
         // If the brush is empty, select all circles.
         function brushend() {
         console.log("inside brush end");
         var e = d3.brushSelection(this);
+        jsonified_set = JSON.stringify(Array.from(set_inside_brush));
+        if(set_inside_brush.size > 0){
+        $.get("/barcrime/"+jsonified_set, function(result){
+                result = JSON.parse(result);
+                // console.log(result);
+                items_to_update = result;
+                console.log(items_to_update);
+                update(items_to_update);
+            });
+        }
         if (e === null) d3.select("body").selectAll(".hidden").classed("hidden", false);
         }
 
         var projection = d3.geoMercator() // mercator makes it easy to center on specific lat/long
-            .scale(50000)
-            .center([-73.644560,40.682308]); // long, lat of NYC
+            .scale(45000)
+            .center([-73.623560,40.652308]);// long, lat of NYC
 
         var pathGenerator = d3.geoPath()
             .projection(projection);
@@ -351,60 +399,30 @@
             // $.get("/pcadataset", function(airbnbdata){
 
             $.get("/map", function(airbnbdata){
-
-                var neighbourhood_groups = airbnbdata.map(function(d) { return d.neighbourhood_group; })
-                var neighbourhoods = Array.from(new Set(neighbourhood_groups));
-                myColor = d3.scaleOrdinal().domain(neighbourhoods).range(d3.schemeCategory10);
-                addPointsToMap(airbnbdata,neighbourhoods);
+                airbnbdata = JSON.parse(airbnbdata);
+    
+                addPointsToMap(airbnbdata);
             });
 
             $.get("/pricescatter", function(airbnbdata){
-                
+                airbnbdata = JSON.parse(airbnbdata);
                 drawScatterPlot(airbnbdata,"Price/Night","Rating","pricescatter");
-
             });
 
             $.get("/pcascatter", function(airbnbdata){
-                
+                airbnbdata = JSON.parse(airbnbdata);
                 drawScatterPlot(airbnbdata,"PC1","PC2","pcascatter");
             });
 
             $.get("/barcrime/all", function(result){
+                result = JSON.parse(result);
                 grouped_bar_items = result;
                 drawBarChart(result);
             });
-            // d3.csv('stratified_sampled_data.csv', function(error2, airbnbdata) {
-                // if (error2) return console.error(error2);
-
-                
-                 // TO DO: FLASK API call here, results of default API call should go in result
-                 // keep grouped_bar_items = result, we need it to restore the array later
-                // grouping zip codes default
-                // result should look like this, for example [{group:Jan, value: 100},{group:Feb, value: 1000}]
-                // for all 12 months until December 2019
-                // var result = [];
-                // airbnbdata.reduce(function(res, val) {
-                // if (!res[val.zipcodes]) {
-                //     res[val.zipcodes] = { group: val.zipcodes, value: 0 };
-                //     result.push(res[val.zipcodes])
-                // }
-                // res[val.zipcodes].value += +val.CMPLNT_NUM_count_sum;
-                // return res;
-                // }, {});
-
-                // grouped_bar_items = result;
-
-                // // TO DO: After implementing FLASK API call, remove slicing from here
-                // result = result.slice(0, 11);
-
-                // addPointsToMap(airbnbdata,neighbourhoods);
-                // drawScatterPlot(airbnbdata,"Price/Night","Rating","pricescatter");
-                // drawScatterPlot(airbnbdata,"PC1","PC2","pcascatter");
-                // drawBarChart(result);
                 
             });
         
-        var addPointsToMap = function(airbnbdata,neighbourhoods) {
+        var addPointsToMap = function(airbnbdata) {
             var radiusScale = d3.scaleSqrt()
                 // .domain([d3.extent(crimeData, function(crime) { return +crime.TOT; })])
                 .domain([1,5])
@@ -443,7 +461,7 @@
         if(type === "pcascatter"){
         // TO DO: Flask API call, don't call the API here, just rename
         // Rename price_zscore to PC1 and crime_zscore to PC2
-        final_ds = dataset.map(function(d) { return [+d.price_zscore,+d.crime_zscore,+d.index,d.neighbourhood_group]; })
+        final_ds = dataset.map(function(d) { return [+d.PC1,+d.PC2,+d.index,d.neighbourhood_group]; })
         }
         var buffer = 2;
         // final_ds = dataset.original.circle.concat(dataset.stratified.circle,dataset.random.circle)
@@ -455,6 +473,7 @@
         yScale = d3.scaleLinear().range([innerh, 0]).domain([y_lim[0]-buffer, y_lim[1]+buffer]);
         }
         if(type === "pcascatter"){
+        buffer = 0.1
         xScale2 = d3.scaleLinear().range([0, innerw]).domain([x_lim[0]-buffer, x_lim[1]+buffer]);
         yScale2 = d3.scaleLinear().range([innerh, 0]).domain([y_lim[0]-buffer, y_lim[1]+buffer]);
         }
@@ -607,7 +626,13 @@
                     .attr("text-anchor", "end")
                     .attr("font-weight", "bold")
                     .text("Number of Crimes");
+                
+                xScalebar.domain(data1.map(function(d) { return d.group; }))
+                xAxis.call(d3.axisBottom(xScalebar)).attr("font-weight", "bold");
 
+                // Update the Y axis
+                yScalebar.domain([0, d3.max(data1, function(d) { return d.value }) ]);
+                yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar)).attr("font-weight", "bold");
                 // Initialize the plot with the dataset passed
                 update(data1)
 
@@ -616,12 +641,12 @@
                 // A function that create / update the plot for a given variable:
                 function update(data) {
                 // Update the X axis
-                xScalebar.domain(data.map(function(d) { return d.group; }))
-                xAxis.call(d3.axisBottom(xScalebar)).attr("font-weight", "bold");
+                // xScalebar.domain(data.map(function(d) { return d.group; }))
+                // xAxis.call(d3.axisBottom(xScalebar)).attr("font-weight", "bold");
 
-                // Update the Y axis
-                yScalebar.domain([0, d3.max(data, function(d) { return d.value }) ]);
-                yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar)).attr("font-weight", "bold");
+                // // Update the Y axis
+                // yScalebar.domain([0, d3.max(data, function(d) { return d.value }) ]);
+                // yAxis.transition().duration(1000).call(d3.axisLeft(yScalebar)).attr("font-weight", "bold");
 
                 // Create the u variable
                 var u = svgbarchart.selectAll("rect")
