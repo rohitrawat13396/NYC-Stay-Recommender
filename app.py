@@ -48,7 +48,6 @@ def get_geodata():
 def get_map_data(): 
     map_data = stratified_sample[["index","neighbourhood_group","longitude", "latitude"]]
     map_data = map_data.to_json(orient = "records")  
-    print(map_data)
     return map_data
 
 @app.route("/pricescatter")
@@ -101,9 +100,9 @@ def get_table_data(indexids):
         stratified_sample_new  =  stratified_sample.set_index('index')
         json_indexes = json.loads(json_indexids)[1:-1]
         json_indexes = list(map(int,json_indexes.split(',')))
-        print(json_indexes)
-        print(stratified_sample_new)
+        # print(json_indexes)
+        # print(stratified_sample_new)
         print(stratified_sample_new[stratified_sample_new.index.isin(json_indexes)][["neighbourhood_group","name","description","listing_url","latitude","longitude"]])
         brushed_sample = stratified_sample_new[stratified_sample_new.index.isin(json_indexes)].sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
-        print(brushed_sample)
+        # print(brushed_sample)
         return brushed_sample.to_json(orient="records")
