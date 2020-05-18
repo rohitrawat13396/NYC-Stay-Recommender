@@ -8,11 +8,11 @@ import json
 app = Flask(__name__)
   
 # Opening JSON file 
-f = open('nyc.geo.json',) 
+f = open(r'datasets\nyc.geo.json',) 
 geo_data = json.load(f) 
 
-stratified_sample  =   pd.read_csv('stratified_sampled_data.csv')
-grouped_multiple_data  =   pd.read_csv('grouped_multiple_data.csv')
+stratified_sample  =   pd.read_csv(r'datasets\stratified_sampled_data.csv')
+grouped_multiple_data  =   pd.read_csv(r'datasets\grouped_multiple_data.csv')
 
 data_for_pca = stratified_sample[["review_scores_rating_zscore","price_zscore","crime_zscore"]]
 

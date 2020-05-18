@@ -1,0 +1,62 @@
+#logo {
+    fill: #FF385C !important;
+    color: #FF385C !important;
+    font-weight: 1000;
+    margin-left: 5px;
+}
+
+.boroughs {
+    fill: rgb(222,235,247);
+    stroke: #000;
+    stroke-width: 0.5px;
+}
+
+circle {
+fill-opacity: .9;
+}
+
+circle.hidden {
+fill: #ccc !important;
+fill-opacity: 0.1;
+stroke-width: 0.2px;
+}
+
+#map {    
+    position:absolute;
+    top:60px;
+    left:10px;
+    width:500px;
+    height: 500px; 
+}
+
+#resultstable{
+    position:absolute;
+    top:540px;
+    left:10px;
+    width: 100px;
+    height: 100px;     
+}
+
+#pricescatterdiv {    
+    position:absolute;
+    top:60px;
+    left:520px;
+    height: 400px;
+    width:600px;
+}
+
+#pcascatterdiv {    
+    position:absolute;
+    top:60px;
+    left:950px;
+    height: 400px;
+    width:400px;
+}
+
+#barchartdiv {    
+    position:absolute;
+    top:345px;
+    left:520px;
+    height: 300px;
+    width:800px;
+}
