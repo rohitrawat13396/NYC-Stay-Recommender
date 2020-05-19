@@ -4,6 +4,12 @@
         <meta charset="utf-8">
     </head>
     <body>
+        <div id="modal1" class="modal">
+            <div class="modal-content">
+              <a class="modal-close waves-effect waves-green btn right">Ok</a>
+              <h4>Changing bin size</h4>
+            </div>
+          </div>
         <div class="navbar-fixed">
             <nav>
               <div class="nav-wrapper white">
@@ -22,10 +28,11 @@
         <div id="pcascatterdiv"></div>
         <div id="barchartdiv"></div>
         <div id="resultstable">
-            <table>
+            <table class="centered highlight">
                 <thead>
                   <tr>
                       <th>Borough</th>
+                      <th>Name</th>
                       <th>Recommendation</th>
                   </tr>
                 </thead>
@@ -41,8 +48,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     <!-- Compiled and minified JavaScript -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
-     
+     <script>
+         $(document).ready(function () {
+            $('.modal').modal();
+            });
+     </script>
     <style>
+        p { margin:0 !important}
+        table
+        {
+            table-layout: fixed;
+            width: 500px;
+        }
         #logo {
             fill: #FF385C !important;
             color: #FF385C !important;
@@ -68,7 +85,7 @@
 
         #map {    
             position:absolute;
-            top:60px;
+            top:70px;
             left:10px;
             width:500px;
             height: 500px; 
@@ -76,34 +93,34 @@
 
         #resultstable{
             position:absolute;
-            top:450px;
-            left:10px;
+            top:560px;
+            left:30px;
             width: 100px;
             height: 100px;     
         }
 
         #pricescatterdiv {    
             position:absolute;
-            top:60px;
-            left:450px;
+            top:70px;
+            left:560px;
             height: 400px;
             width:600px;
         }
         
         #pcascatterdiv {    
             position:absolute;
-            top:60px;
-            left:850px;
+            top:70px;
+            left:1100px;
             height: 400px;
-            width:400px;
+            width:600px;
         }
 
         #barchartdiv {    
             position:absolute;
-            top:335px;
-            left:430px;
+            top:485px;
+            left:543px;
             height: 240px;
-            width:800px;
+            width:900px;
         }
 
     </style>
@@ -368,8 +385,8 @@
         }
 
         var projection = d3.geoMercator() // mercator makes it easy to center on specific lat/long
-            .scale(38000)
-            .center([-73.483560,40.612308]);// long, lat of NYC
+            .scale(50000)
+            .center([-73.653560,40.682308]);// long, lat of NYC
 
         var pathGenerator = d3.geoPath()
             .projection(projection);
@@ -424,11 +441,36 @@
                 var curr_row = d3.select("tbody").append("tr")
                 var tablerow = tableData[i];
                 curr_row.append("td").text(tablerow.neighbourhood_group);
-                // curr_row.append("td").text(tablerow.name);
+
+                curr_row.append("td").append("button")
+                .attr("data-target","modal1")
+                .attr("class","btn modal-trigger")
+                .attr("id",tablerow.name)
+                .attr("description",tablerow.description)                
+                .text(tablerow.name);
+
+
                 curr_row.append("td").append("a").attr("class","waves-effect waves-light btn").attr("href",tablerow.listing_url)
                 .attr("target","_blank")
                 .text("Book");
                 }
+
+                d3.select("tbody").selectAll("button").on("click",function(){
+
+                    d3.select(".modal-content").selectAll("p").remove();
+
+                    var name_extracted = d3.select(this).attr("id");
+                    var description_extracted = d3.select(this).attr("description")
+                    d3.select(".modal-content").select("h4").text(name_extracted)
+
+                    var desc = description_extracted.split(". ");
+                    
+                    var modal_select = d3.select(".modal-content");
+                    
+                    for(j = 0;j<desc.length;j++){
+                    modal_select.append("p").text(desc[j].trim())
+                    }
+                })
 
         }
         
@@ -458,12 +500,12 @@
         var x_label=x_lab,y_label=y_lab;
 
        
-        var w = 400,
-            h = 280;
-        var margin = 70;
+        var w = 550,
+            h = 420;
+        var margin = 80;
         var innerw = w - margin;
         var innerh = h - margin;
-        var outergraph_translate_x = 40;
+        var outergraph_translate_x = 50;
         var outergraph_translate_y = 10;
         
         if(type === "pricescatter"){
@@ -592,12 +634,12 @@
 
             var data1 = dataset;
 
-                var w = 800,
-                    h = 250;
-                var margin = 80;
+                var w = 1100,
+                    h = 350;
+                var margin = 90;
                 var innerw = w - margin;
                 innerhbar = h - margin;
-                var outergraph_translate_x = 60;
+                var outergraph_translate_x = 70;
                 var outergraph_translate_y = 20;
 
                 svgbarchart = d3.select("#barchartdiv")

@@ -131,11 +131,6 @@ def get_table_data_filter(boroughs):
     borough_list = json.loads(borough_list)[1:-1]
     borough_list = list(borough_list.split(','))
 
-    print(borough_list)
-    
     stratified_sample_new  =  stratified_sample.set_index('index')
-    print(stratified_sample_new["neighbourhood_group"].unique())
-
     brushed_sample = stratified_sample_new[stratified_sample_new["neighbourhood_group"].isin(borough_list)].sort_values(['price', 'review_scores_rating','CMPLNT_NUM_count_sum'], ascending=[True, False, True])[columns].head(3)
-    print(brushed_sample)
     return brushed_sample.to_json(orient="records")
